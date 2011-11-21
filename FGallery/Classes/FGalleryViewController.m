@@ -66,12 +66,14 @@
 
 
 @implementation FGalleryViewController
+@synthesize photoLoaders = _photoLoaders;
 @synthesize galleryID;
 @synthesize photoSource = _photoSource;
 @synthesize currentIndex = _currentIndex;
 @synthesize thumbsView = _thumbsView;
 @synthesize toolBar = _toolbar;
 @synthesize useThumbnailView = _useThumbnailView;
+@synthesize goToIndexWhenLoaded;
 
 
 #pragma mark - Public Methods
@@ -97,6 +99,8 @@
 		_photoViews							= [[NSMutableArray alloc] init];
 		_photoThumbnailViews				= [[NSMutableArray alloc] init];
 		_barItems							= [[NSMutableArray alloc] init];
+        
+        self.goToIndexWhenLoaded = 0;
         
         /*
          // debugging: 
@@ -194,22 +198,42 @@
 	[_captionContainer addSubview:_caption];
 	
 	// create buttons for toolbar
-	UIImage *leftIcon = [UIImage imageNamed:@"photo-gallery-left.png"];
-	UIImage *rightIcon = [UIImage imageNamed:@"photo-gallery-right.png"];
+	UIImage *leftIcon = [UIImage imageNamed:@"05-arrow-west"];
+	UIImage *rightIcon = [UIImage imageNamed:@"01-arrow-east"];
 	_nextButton = [[UIBarButtonItem alloc] initWithImage:rightIcon style:UIBarButtonItemStylePlain target:self action:@selector(next)];
 	_prevButton = [[UIBarButtonItem alloc] initWithImage:leftIcon style:UIBarButtonItemStylePlain target:self action:@selector(previous)];
 	
-	// add prev next to front of the array
+	/*// add prev next to front of the array
 	[_barItems insertObject:_nextButton atIndex:0];
-	[_barItems insertObject:_prevButton atIndex:0];
+	[_barItems insertObject:_prevButton atIndex:0];*/
 	
-	_prevNextButtonSize = leftIcon.size.width;
+	//_prevNextButtonSize = leftIcon.size.width;
+    
+    NSUInteger nextButtonIdx = [_barItems indexOfObjectPassingTest:^BOOL(id obj, NSUInteger idx, BOOL *stop) {
+        if ([obj isKindOfClass:[NSString class]] && [obj isEqualToString:kFGalleryNextBarButtonItemPlaceholder]) {
+            *stop = YES;
+            return YES;
+        }
+        return NO;
+    }];
+    [_barItems replaceObjectAtIndex:nextButtonIdx withObject:_nextButton];
+    
+    NSUInteger prevButtonIdx = [_barItems indexOfObjectPassingTest:^BOOL(id obj, NSUInteger idx, BOOL *stop) {
+        if ([obj isKindOfClass:[NSString class]] && [obj isEqualToString:kFGalleryPrevBarButtonItemPlaceholder]) {
+            *stop = YES;
+            return YES;
+        }
+        return NO;
+    }];
+    [_barItems replaceObjectAtIndex:prevButtonIdx withObject:_prevButton];
 	
 	// set buttons on the toolbar.
 	[_toolbar setItems:_barItems animated:NO];
     
     // build stuff
     [self reloadGallery];
+    
+    [self gotoImageByIndex:self.goToIndexWhenLoaded animated:NO];
 }
 
 - (void)viewDidUnload {
@@ -293,7 +317,7 @@
 	[[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleBlackTranslucent animated:animated];
 	
 	// init with next on first run.
-	if( _currentIndex == -1 ) [self next];
+	if( _currentIndex == -1 ) [self next:NO];
 	else [self gotoImageByIndex:_currentIndex animated:NO];
 }
 
@@ -355,7 +379,13 @@
 
 - (void)next
 {
-	NSUInteger numberOfPhotos = [_photoSource numberOfPhotosForPhotoGallery:self];
+	[self next:YES];
+}
+
+
+- (void)next:(BOOL)animated
+{
+    NSUInteger numberOfPhotos = [_photoSource numberOfPhotosForPhotoGallery:self];
 	NSUInteger nextIndex = _currentIndex+1;
 	
 	// don't continue if we're out of images.
@@ -365,17 +395,21 @@
 		return;
 	}
 	
-	[self gotoImageByIndex:nextIndex animated:NO];
+	[self gotoImageByIndex:nextIndex animated:animated];
 }
-
 
 
 - (void)previous
 {
-	NSUInteger prevIndex = _currentIndex-1;
-	[self gotoImageByIndex:prevIndex animated:NO];
+	[self previous:YES];
 }
 
+
+- (void)previous:(BOOL) animated
+{
+    NSUInteger prevIndex = _currentIndex-1;
+	[self gotoImageByIndex:prevIndex animated:NO];
+}
 
 
 - (void)gotoImageByIndex:(NSUInteger)index animated:(BOOL)animated
@@ -394,7 +428,7 @@
 	else {
 		
 		// clear the fullsize image in the old photo
-		[self unloadFullsizeImageWithIndex:_currentIndex];
+//		[self unloadFullsizeImageWithIndex:_currentIndex];
 		
 		_currentIndex = index;
 		[self moveScrollerToCurrentIndexWithAnimation:animated];
@@ -470,11 +504,12 @@
 	CGRect screenFrame = [[UIScreen mainScreen] bounds];
 	CGRect innerContainerRect;
 	
-	if( self.interfaceOrientation == UIInterfaceOrientationPortrait || self.interfaceOrientation == UIInterfaceOrientationPortraitUpsideDown )
+	if( self.interfaceOrientation == UIInterfaceOrientationPortrait )
 	{
 		innerContainerRect = CGRectMake( 0, _container.frame.size.height - screenFrame.size.height, _container.frame.size.width, screenFrame.size.height );
 	}
-	else if( self.interfaceOrientation == UIInterfaceOrientationLandscapeLeft || self.interfaceOrientation == UIInterfaceOrientationLandscapeRight )
+	else if( self.interfaceOrientation == UIInterfaceOrientationLandscapeLeft 
+			|| self.interfaceOrientation == UIInterfaceOrientationLandscapeRight )
 	{
 		innerContainerRect = CGRectMake( 0, _container.frame.size.height - screenFrame.size.width, _container.frame.size.width, screenFrame.size.width );
 	}
@@ -487,11 +522,12 @@
 	CGRect screenFrame = [[UIScreen mainScreen] bounds];
 	CGRect scrollerRect;
 	
-	if( self.interfaceOrientation == UIInterfaceOrientationPortrait || self.interfaceOrientation == UIInterfaceOrientationPortraitUpsideDown )
+	if( self.interfaceOrientation == UIInterfaceOrientationPortrait )
 	{
 		scrollerRect = CGRectMake( 0, 0, screenFrame.size.width, screenFrame.size.height );
 	}
-	else if( self.interfaceOrientation == UIInterfaceOrientationLandscapeLeft || self.interfaceOrientation == UIInterfaceOrientationLandscapeRight )
+	else if( self.interfaceOrientation == UIInterfaceOrientationLandscapeLeft 
+			|| self.interfaceOrientation == UIInterfaceOrientationLandscapeRight )
 	{
 		scrollerRect = CGRectMake( 0, 0, screenFrame.size.height, screenFrame.size.width );
 	}
@@ -956,7 +992,7 @@
 		return;
 	
 	// clear previous
-	[self unloadFullsizeImageWithIndex:_currentIndex];
+//	[self unloadFullsizeImageWithIndex:_currentIndex];
 	
 	_currentIndex = newIndex;
 	[self updateCaption];
@@ -986,6 +1022,7 @@
 
 - (void)galleryPhoto:(FGalleryPhoto*)photo willLoadThumbnailFromUrl:(NSString*)url
 {
+//    NSLog(@"will load from URL: %@", url);
 	// show activity indicator for large photo view
 	FGalleryPhotoView *photoView = [_photoViews objectAtIndex:photo.tag];
 	[photoView.activity startAnimating];
@@ -1026,7 +1063,7 @@
 		photoView.imageView.image = photo.fullsize;
 	}
 	// otherwise, we don't need to keep this image around
-	else [photo unloadFullsize];
+//	else [photo unloadFullsize];
 }
 
 
@@ -1172,9 +1209,15 @@
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 {
-	if([self.visibleViewController isKindOfClass:[FGalleryViewController class]]) 
+	if( interfaceOrientation == UIInterfaceOrientationPortrait 
+	   || interfaceOrientation == UIInterfaceOrientationLandscapeLeft 
+	   || interfaceOrientation == UIInterfaceOrientationLandscapeRight )
 	{
-        return YES;
+		// see if the current controller in the stack is a gallery
+		if([self.visibleViewController isKindOfClass:[FGalleryViewController class]])
+		{
+			return YES;
+		}
 	}
 	
 	// we need to support at least one type of auto-rotation we'll get warnings.
@@ -1201,17 +1244,22 @@
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 {
-    // only return yes if we're looking at the gallery
-    if( [self.selectedViewController isKindOfClass:[UINavigationController class]])
-    {
-        UINavigationController *navController = (UINavigationController*)self.selectedViewController;
-        
-        // see if the current controller in the stack is a gallery
-        if([navController.visibleViewController isKindOfClass:[FGalleryViewController class]])
-        {
-            return YES;
-        }
-    }
+	if( interfaceOrientation == UIInterfaceOrientationPortrait 
+	   || interfaceOrientation == UIInterfaceOrientationLandscapeLeft 
+	   || interfaceOrientation == UIInterfaceOrientationLandscapeRight )
+	{
+		// only return yes if we're looking at the gallery
+		if( [self.selectedViewController isKindOfClass:[UINavigationController class]])
+		{
+			UINavigationController *navController = (UINavigationController*)self.selectedViewController;
+			
+			// see if the current controller in the stack is a gallery
+			if([navController.visibleViewController isKindOfClass:[FGalleryViewController class]])
+			{
+				return YES;
+			}
+		}
+	}
 	
 	// we need to support at least one type of auto-rotation we'll get warnings.
 	// so, we'll just support the basic portrait.

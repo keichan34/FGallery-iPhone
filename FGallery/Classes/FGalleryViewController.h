@@ -24,6 +24,9 @@ typedef enum
 	FGalleryPhotoSourceTypeLocal
 } FGalleryPhotoSourceType;
 
+#define kFGalleryNextBarButtonItemPlaceholder @"kFGalleryNextBarButtonItemPlaceholder"
+#define kFGalleryPrevBarButtonItemPlaceholder @"kFGalleryPrevBarButtonItemPlaceholder"
+
 @protocol FGalleryViewControllerDelegate;
 
 @interface FGalleryViewController : UIViewController <UIScrollViewDelegate,FGalleryPhotoDelegate,FGalleryPhotoViewDelegate> {
@@ -82,9 +85,13 @@ typedef enum
 - (void)removeImageAtIndex:(NSUInteger)index;
 
 - (void)next;
+- (void)next:(BOOL)animated;
 - (void)previous;
+- (void)previous:(BOOL)animated;
 - (void)gotoImageByIndex:(NSUInteger)index animated:(BOOL)animated;
 - (void)reloadGallery;
+
+@property (readonly) NSMutableDictionary *photoLoaders;
 
 @property (nonatomic,assign) NSObject<FGalleryViewControllerDelegate> *photoSource;
 @property (nonatomic,readonly) UIToolbar *toolBar;
@@ -92,6 +99,8 @@ typedef enum
 @property NSInteger currentIndex;
 @property (nonatomic,retain) NSString *galleryID;
 @property (nonatomic) BOOL useThumbnailView;
+
+@property NSInteger goToIndexWhenLoaded;
 
 @end
 

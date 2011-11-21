@@ -32,10 +32,13 @@
 	self.clipsToBounds = YES;
 	self.delegate = self;
 	self.contentMode = UIViewContentModeCenter;
-	self.maximumZoomScale = 3.0;
+	self.maximumZoomScale = 2.0;
 	self.minimumZoomScale = 1.0;
 	self.decelerationRate = .85;
 	self.contentSize = CGSizeMake(frame.size.width, frame.size.height);
+    
+    self.showsVerticalScrollIndicator = NO;
+    self.showsHorizontalScrollIndicator = NO;
 	
 	// create the image view
 	imageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, frame.size.height)];
